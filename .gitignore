@@ -1,0 +1,12 @@
+.DS_Store
+.codex/
+.Rhistory
+.RData
+.Rproj.user/
+__pycache__/
+*.tmp
+*~
+.venv/
+venv/
+env/
+*.log

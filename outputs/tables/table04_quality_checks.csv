@@ -1,0 +1,5 @@
+check_item,value,conclusion
+完全重复记录,0,未发现完全重复记录
+instant 重复编号,0,记录编号唯一
+cnt = casual + registered 不成立记录,0,总租赁量组成关系全部成立
+hour.csv 缺失值总数,0,未发现缺失值

@@ -1,0 +1,69 @@
+Bike Sharing thesis analysis
+Project directory: .
+Run time: 2026-06-08 10:32:59.601647 
+
+Package availability
+# A tibble: 31 × 2
+   package   available
+   <chr>     <lgl>    
+ 1 readr     TRUE     
+ 2 dplyr     TRUE     
+ 3 tidyr     TRUE     
+ 4 ggplot2   TRUE     
+ 5 lubridate TRUE     
+ 6 scales    TRUE     
+ 7 broom     TRUE     
+ 8 MASS      TRUE     
+ 9 rpart     TRUE     
+10 knitr     TRUE     
+# ℹ 21 more rows
+
+Raw data dimensions
+[1] 17379    17
+[1] 731  16
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+null device 
+          1 
+
+Key result summary
+# A tibble: 33 × 2
+   item                   value                                        
+   <chr>                  <chr>                                        
+ 1 hour_rows              17379                                        
+ 2 hour_variables         17                                           
+ 3 day_rows               731                                          
+ 4 cnt_mean               189.463                                      
+ 5 cnt_median             142                                          
+ 6 cnt_max                977                                          
+ 7 casual_mean            35.676                                       
+ 8 registered_mean        153.787                                      
+ 9 season_lowest_mean     春季                                         
+10 season_highest_mean    秋季                                         
+11 weather_best_mean      晴朗或少云                                   
+12 weather_bad_mean       恶劣天气                                     
+13 year_2011_mean         143.794                                      
+14 year_2012_mean         234.666                                      
+15 peak_hour              17                                           
+16 peak_hour_mean         461.452                                      
+17 lowest_hour            4                                            
+18 lowest_hour_mean       6.353                                        
+19 workingday_mean        193.208                                      
+20 nonworkingday_mean     181.405                                      
+21 poisson_overdispersion 32.427                                       
+22 poisson_AIC            687000.919                                   
+23 negbin_AIC             188324.304                                   
+24 best_prediction_model  随机森林                                     
+25 best_prediction_RMSE   43.473                                       
+26 best_prediction_MAE    26.999                                       
+27 best_prediction_R2     0.943                                        
+28 top_tree_variables     hr、temp_celsius、mnth、yr、season           
+29 top_rf_variables       hr、workingday、temp_celsius、yr、hum_percent
+30 lasso_nonzero_terms    46                                           
+31 lasso_lambda_min       0.056059                                     
+32 casual_total_share     0.1883                                       
+33 registered_total_share 0.8117                                       
