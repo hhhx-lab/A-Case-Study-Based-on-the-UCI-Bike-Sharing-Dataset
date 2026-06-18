@@ -4,6 +4,7 @@
 .RData
 .Rproj.user/
 __pycache__/
+outputs/
 *.tmp
 *~
 .venv/

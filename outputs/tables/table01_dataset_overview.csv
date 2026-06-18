@@ -1,3 +1,0 @@
-dataset,observations,variables,start_date,end_date,role
-hour.csv,17379,17,2011-01-01,2012-12-31,主分析数据：小时级租赁记录
-day.csv,731,16,2011-01-01,2012-12-31,补充分析数据：日级租赁记录

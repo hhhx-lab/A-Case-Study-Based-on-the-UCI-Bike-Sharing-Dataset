@@ -1,2 +1,0 @@
-test,statistic,p_value,conclusion
-Breusch-Pagan 异方差检验,5329.985379132394,0,存在异方差迹象，使用 HC3 稳健标准误补充
