@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import csv
 import re
-from html.parser import HTMLParser
 from pathlib import Path
 
 from docx import Document
@@ -132,6 +131,12 @@ def set_table_borders_three_line(table):
                 bottom.set(qn("w:color"), "000000")
 
 
+def set_row_cant_split(row):
+    tr_pr = row._tr.get_or_add_trPr()
+    cant_split = OxmlElement("w:cantSplit")
+    tr_pr.append(cant_split)
+
+
 def set_run_font(run, name="宋体", size=12, bold=False, italic=False):
     run.font.name = name if name != "宋体" else "Times New Roman"
     run._element.rPr.rFonts.set(qn("w:eastAsia"), name)
@@ -222,6 +227,7 @@ def add_caption(doc, text: str, above: bool = False):
     p.paragraph_format.line_spacing = 1.5
     p.paragraph_format.space_before = Pt(3 if not above else 0)
     p.paragraph_format.space_after = Pt(3 if above else 6)
+    p.paragraph_format.keep_with_next = True
     run = p.add_run(text)
     set_run_font(run, "宋体", 10.5, bold=True)
     return p
@@ -232,7 +238,9 @@ def add_table(doc, rows: list[list[str]], caption: str):
     table = doc.add_table(rows=len(rows), cols=len(rows[0]))
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.style = "Table Grid"
+    table.autofit = True
     for r_idx, row in enumerate(rows):
+        set_row_cant_split(table.rows[r_idx])
         for c_idx, value in enumerate(row):
             cell = table.cell(r_idx, c_idx)
             set_cell_text(cell, value, bold=(r_idx == 0), size=8.5)
@@ -247,6 +255,7 @@ def add_figure(doc, image_name: str, caption: str, width_cm: float = 12.5):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.first_line_indent = None
+    p.paragraph_format.keep_together = True
     run = p.add_run()
     run.add_picture(str(FIG_DIR / image_name), width=Cm(width_cm))
     add_caption(doc, caption, above=False)
@@ -307,101 +316,6 @@ def rows_from_dicts(data: list[dict[str, str]], cols: list[tuple[str, str]], lim
                 out.append(val)
         rows.append(out)
     return rows
-
-
-class SimpleHTMLTableParser(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.tables: list[list[list[str]]] = []
-        self._current_table: list[list[str]] | None = None
-        self._current_row: list[str] | None = None
-        self._current_cell: list[str] | None = None
-        self._in_cell = False
-
-    def handle_starttag(self, tag, attrs):
-        if tag == "table":
-            self._current_table = []
-        elif tag == "tr" and self._current_table is not None:
-            self._current_row = []
-        elif tag in {"td", "th"} and self._current_row is not None:
-            self._current_cell = []
-            self._in_cell = True
-
-    def handle_data(self, data):
-        if self._in_cell and self._current_cell is not None:
-            self._current_cell.append(data)
-
-    def handle_endtag(self, tag):
-        if tag in {"td", "th"} and self._current_row is not None and self._current_cell is not None:
-            text = re.sub(r"\s+", " ", "".join(self._current_cell)).strip()
-            self._current_row.append(text)
-            self._current_cell = None
-            self._in_cell = False
-        elif tag == "tr" and self._current_table is not None and self._current_row is not None:
-            if self._current_row:
-                self._current_table.append(self._current_row)
-            self._current_row = None
-        elif tag == "table" and self._current_table is not None:
-            if self._current_table:
-                self.tables.append(self._current_table)
-            self._current_table = None
-
-
-def normalize_rows(rows: list[list[str]]) -> list[list[str]]:
-    if not rows:
-        return [["无内容"]]
-    max_cols = max(len(row) for row in rows)
-    return [row + [""] * (max_cols - len(row)) for row in rows]
-
-
-def read_table_file(path: Path) -> list[list[str]]:
-    if path.suffix.lower() == ".csv":
-        with path.open(newline="", encoding="utf-8-sig") as f:
-            return normalize_rows([[str(cell) for cell in row] for row in csv.reader(f)])
-    if path.suffix.lower() in {".html", ".htm"}:
-        parser = SimpleHTMLTableParser()
-        parser.feed(path.read_text(encoding="utf-8", errors="ignore"))
-        rows: list[list[str]] = []
-        for idx, table_rows in enumerate(parser.tables, start=1):
-            if idx > 1:
-                rows.append([f"HTML 子表 {idx}"])
-            rows.extend(table_rows)
-        return normalize_rows(rows)
-    text = path.read_text(encoding="utf-8", errors="ignore")
-    return [[line] for line in text.splitlines()] or [["无内容"]]
-
-
-def add_appendix_image(doc, image_path: Path, caption: str, width_cm: float = 13.0):
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.first_line_indent = None
-    p.add_run().add_picture(str(image_path), width=Cm(width_cm))
-    add_caption(doc, caption, above=False)
-
-
-def add_appendix_data_table(doc, rows: list[list[str]], caption: str):
-    rows = normalize_rows(rows)
-    add_caption(doc, caption, above=True)
-    table = doc.add_table(rows=len(rows), cols=len(rows[0]))
-    table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    table.style = "Table Grid"
-    font_size = 5.5 if len(rows[0]) >= 8 else 6.5
-    for r_idx, row in enumerate(rows):
-        for c_idx, value in enumerate(row):
-            cell = table.cell(r_idx, c_idx)
-            set_cell_text(cell, value, bold=(r_idx == 0), size=font_size)
-            if r_idx == 0:
-                set_cell_shading(cell, "EDEDED")
-    set_table_borders_three_line(table)
-    doc.add_paragraph()
-
-
-def preview_rows(rows: list[list[str]], max_data_rows: int = 12) -> list[list[str]]:
-    rows = normalize_rows(rows)
-    if len(rows) <= max_data_rows + 1:
-        return rows
-    omitted = len(rows) - max_data_rows - 1
-    return rows[: max_data_rows + 1] + [[f"以下省略 {omitted} 行，完整数据见原始文件路径。"] + [""] * (len(rows[0]) - 1)]
 
 
 def build():
@@ -817,47 +731,23 @@ def build():
         run.font.size = Pt(7.5)
 
     doc.add_page_break()
-    add_heading(doc, "附录 C 附图附表全文与模型文件清单", 1)
+    add_heading(doc, "附录 C 相对路径清单", 1)
     add_paragraph(
         doc,
-        "本附录不再仅列出文件名，而是将 R 脚本输出的附图和附表实际写入论文。附图来自 outputs/figures，附表来自 outputs/tables；模型文件为 R 的二进制 .rds 对象，不适合直接展开为正文，因此在 C.3 中以清单方式列出。",
+        "本附录仅保留相对路径清单，不再展开附图和附表预览，以控制篇幅并避免表格和图片在附录中跨页拆分。所有图表正文结果仍保留在前文，完整文件可在项目目录中按路径定位。",
     )
 
-    add_heading(doc, "C.1 附图全文写入", 2)
-    for idx, image_path in enumerate(sorted(FIG_DIR.glob("*.png")), start=1):
-        add_appendix_image(
-            doc,
-            image_path,
-            f"附图 C-{idx} {image_path.name} / Appendix Figure C-{idx} {image_path.name}",
-            width_cm=12.8,
-        )
+    add_heading(doc, "C.1 附图路径", 2)
+    for image_path in sorted(FIG_DIR.glob("*.png")):
+        add_paragraph(doc, f"附图：{rel_path(image_path)}", first_indent=False, size=10)
 
-    add_heading(doc, "C.2 附表路径与代表性预览", 2)
-    add_paragraph(
-        doc,
-        "考虑到部分附表为测试集逐行预测明细或 HTML 模型汇总，完整展开会显著增加 Word 体积并影响排版。本节对每个附表写入完整文件路径、行列规模和代表性预览；完整结果以 outputs/tables 中的原文件为准。",
-    )
-    for idx, table_path in enumerate(sorted(TABLE_DIR.glob("*")), start=1):
-        rows = read_table_file(table_path)
-        n_rows = len(rows) - 1 if rows else 0
-        n_cols = len(rows[0]) if rows else 0
-        add_paragraph(
-            doc,
-            f"附表 C-{idx} 文件：{table_path.name}；相对路径：{rel_path(table_path)}；规模：约 {n_rows} 行、{n_cols} 列。",
-            first_indent=False,
-            size=9,
-        )
-        add_appendix_data_table(
-            doc,
-            preview_rows(rows),
-            f"附表 C-{idx} {table_path.name} 预览 / Appendix Table C-{idx} Preview of {table_path.name}",
-        )
+    add_heading(doc, "C.2 附表路径", 2)
+    for table_path in sorted(TABLE_DIR.glob("*")):
+        add_paragraph(doc, f"附表：{rel_path(table_path)}", first_indent=False, size=10)
 
-    add_heading(doc, "C.3 模型文件清单", 2)
-    model_rows = [["模型文件名", "文件类型", "路径"]]
+    add_heading(doc, "C.3 模型文件路径", 2)
     for model_path in sorted(MODEL_DIR.glob("*")):
-        model_rows.append([model_path.name, model_path.suffix or "文件", rel_path(model_path)])
-    add_appendix_data_table(doc, model_rows, "附表 C-M1 模型文件清单 / Appendix Table C-M1 Model file list")
+        add_paragraph(doc, f"模型：{rel_path(model_path)}", first_indent=False, size=10)
 
     output = PAPER_DIR / "paper.docx"
     doc.save(output)
